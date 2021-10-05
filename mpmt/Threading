@@ -1,0 +1,281 @@
+Definition:
+    - A thread is an entity within a process that can be scheduled for execution
+    - Thread is the smallest unit of processing that can be performed in an OS.
+    In simple words, a thread is a sequence of such instructions within a program that can be executed independently
+    of other code. For simplicity, you can assume that a thread is simply a subset of a process!
+
+A thread contains all this information in a Thread Control Block (TCB):
+
+- Thread Identifier: Unique id (TID) is assigned to every new thread
+- ?Stack pointer: Points to thread’s stack/heap in the process. Stack contains the local variables under thread’s scope.
+- Program counter: a register which stores the address of the instruction currently being executed by thread.
+- Thread states:
+    - started       : thread = threading.Thread(target=func_to_be_run_in_thread, args=(some_arg_for_func, ))
+    - running       : thread.start()
+    - blocked       : can be made by GIL or by Lock()
+    - terminated
+- Thread’s register set: registers assigned to thread for computations.
+- Parent process Pointer: A pointer to the Process control block (PCB) of the process that the thread lives on.
+
+
+Features of threading module:
+1) You can make threads wait for each other (actually make main thread wait for child threads) | thread.join()
+2) You can make some thread be daemon thread at the moment of creating it. (Thread that is not necessary and
+                    will be demolished as soon as other (main) threads will end up doing their work)
+3) You can put Mutex(Lock or Mutual Exclusion) on the particular common data (variable, etc). Used to prevent race
+                    condition and make sure that some data will be used in a proper manner to the end and won't be
+                    changed by any other thread during this time. The reason for data race is that to change
+                    data we have to make 3 operations: read
+                                                       add
+                                                       write
+                    We should implement Locks to atomic operations (the ones that can not be changed)
+                    Implementation:
+                    >>> lock = threading.Lock()
+                    >>> lock should be passed to the thread as arg while creating
+                    >>> lock.acquire(blocking=True/False)
+                    >>> your execution code
+                    >>> lock.release()
+
+    GIL (Global Interpreter Lock) - the python inbuilt system that prevent bytecode to execute simultaneously
+     It works on the level of garbage_collecting and prevents many variables to be deleted. As soon as thread
+     finishes his work with variables it says that he don't need the data anymore (have no links on that part pf memory)
+     or the Garbage_collector can delete it, but as threads have shared memory - may be some other thread still working
+     with that variable.
+    GIL gives resources to execute another thread every 5ms so it makes one by one.
+
+    Potential problems: deadlocks, abandoned locks, starvation.
+
+
+    Difference between BLOCKING and NOT-BLOCKING(Try-Lock) and READ-WRITE Lock:
+    Blocking
+        Reason for NOT-BLOCKING:
+        1) If you try to acquire a Lock and it is already taken - you are stuck and have to wait
+               - You can check the status and if it locked - do something else and come back later
+                 Such behaviour can be achieved by '.acquire(blocking=False)' or 'try...catch' system
+        Reentrant Lock:
+        2) If you acquire a lock and want to do it again 'RuntimeError: release unlocked lock' will be arisen
+            and the program will be stuck. You are waiting for the lock to be released but only you can release it
+            (Deadlock condition) Answer:
+                - You can use Reentrant Mutex. You can lock this mutex many times but have to unlock it as many times as
+                  you locked. Such situation can happen often when yo reuse functions with locks or in recursive funcs.
+            Lock vs RLock:
+                - Lock can be released by different thread from the one that acquired it
+                - RLock must only be released by the thread that acquired it and no else.
+                - RLock must be released as many times as it was acquired.
+        READ-WRITE Lock
+        3) This type of lock let's many threads to read at the same time and they will acquire the mutex(lock) together.
+           But only one thread can write when it takes the mutex and no threads can read.
+           To write mutex must be released from all other 'read' or 'write' threads
+
+           Actually READ-WRITE Lock provides two regimes:
+               1) SHARED READ
+               2) EXCLUSIVE WRITE
+           Used when:
+               - MANY threads wants to READ info and FEW wants to WRITE.
+
+
+    DEADLOCK - the period of program when it is stuck because threads are waiting for each other to release a lock.
+        It will be in that state forever. Good multi-threaded program guaranties that program will be
+        finished properly without DEADLOCK or ABANDONED LOCK.
+
+    DEADLOCK can:
+        - break the program
+        - return wrong result
+
+    Preventing DEADLOCK:
+    1) Lock status ordering
+        (Ensure all Locks are always taken in the same order by any thread)
+        If we use more than 1 lock ('DINNING PHILOSOPHERS PROBLEM' we used 3 locks) we can say that lock_1 is
+        the most important and the priority for that lock will be highest. That means that 2 threads would compete
+        who will get the first lock and only the one who took it can acquire the 2-nd lock. Another will just wait
+        Problem: a thread may no know about all of the locks needed after acquiring the first lock.
+
+    2) Lock Timeout
+        Put a timeout on lock attempts
+        If a thread can not acquire all the locks needed within the time limit:
+            - Back up and free all the locks acquired
+            - Wait for a random amount of time
+            - Try again
+        Such way gives other threads a chance to take the locks they need.
+
+
+    ABANDONED LOCK: type of problem when a thread that acquired the lock died and didn't release the lock. The result is
+        almost the same to DEADLOCK - the program doesn't make any progress(but in a different condition and reason)
+
+    Preventing ABANDONED LOCK:
+        1) We can use 'try... finally' statement and always release a lock in finally block. Mostly we wrap
+            critical zone after acquire method in 'try... finally' construction.
+
+        2) Context manager 'with'. We cant just write 'with lock_name:' instead of 'lock_name.acquire() ... try' and
+            python will do all the work for you.
+
+    NOTE!!! It is a good practise to make sure locks will be released by 'try...finally' or 'with' technic.
+
+
+______________________________________
+!!! Check out with context manager !!!
+______________________________________
+
+
+    STARVATION: a thread perpetually(constantly) has no chance to get the resources he needs. For example another
+        greedy thread always need something from the system or works faster.
+
+        Reasons:
+            - too many different threads work concurrently
+            - different priorities of the threads
+
+        NOTE: We now can see that distribution totally depends on the order of locks we have to acquire to get resources
+
+        There are technics that can prevent like giving proper priorities or other... Have to research !!!
+
+
+    LIVE LOCK: multiple threads or processes are actively responding to each other to resolve conflict, but that
+        prevents them from making progress. Actually they are both to polite to take the resources that that both just
+        throw it to each other. It is often happen due to algorithms made to prevent DEADLOCK.
+
+        A: You should take it...!
+        B: Noo, you should take it!
+        A: But you need it more!
+        B: ..... it will continue forever.
+
+        Solution:
+            - random choice (sleep of some thread or whatever)
+
+
+____________________________________________________________________________________________________________________
+LinkedIn Part 2
+____________________________________________________________________________________________________________________
+
+
+Spinning (Busy waiting) - repeatedly releasing and acquiring the lock to check for certain condition to continue.
+
+    The problem is Mutex restricts multiple threads from taking some shared resource at the same time, but
+    the Mutes doesn't give our threads a way to signal each other to synchronize their actions
+
+Condition Variable - serves as a container for the threads that are waiting for certain condition to occur.
+    (A place for threads to wait and be notified)
+    Condition Variable is associated with the Mutex and they are used to implement a monitor.
+
+    A thread typically notify a Condition variable after doing something to change the state associated with
+    the Condition Variable, but before releasing the associated Lock.
+
+    Main functions:
+        - wait (when thread acquire the lock and understand it's NOT his turn, he calls wait())
+            1) automatically release the lock
+            2) go to sleep and enter a waiting queue
+            3) require lock when it is woken up
+        - signal (when thread acquire the lock and understand IT'S HIS turn, he do the work and calls signal())
+            1) signals some particular thread to wake up from the condition variable queue (wake, notify etc)
+            2) release the lock on the mutex so waiting thread can acquire it.
+        - broadcast
+            1) the same as signal but it signals all threads in the condition variable queue.
+
+    Using:
+        >>> lock.acquire()
+
+            while not (SOME CONDITION):      SOME CONDITION is statement not the object
+                condition_variable.wait()
+
+            do something...
+
+            lock.release()
+        >>>
+
+
+Monitor
+    - protect critical section with mutual exclusion (Mutex)
+    - provide ability for threads to wait until a condition occurs (the mechanism that signals the thread when the
+    condition become true).
+
+
+Shared Queue ( Buffer ) - used when multiple threads are adding items to the queue and taking them out they need mutex
+    so to let only one element be added or removed at a time.
+        Condition variables:
+            BufferNotFull - indicates that buffer not full (if thread wants to added item to the buffer)
+            BufferNotEmpty - (when thread wants to retrieve data there must be some data to get)
+
+
+    Producer - Consumer pattern = the pattern when many threads add task to the queue and many threads get tasks out
+        (tasks are shared resources so we must make sure that only one thread in a moment can work with it)
+        Example: some streaming data on the network that should be manipulated, etc
+
+        Pattern use 'thread-safe synchronized queue'. Soe language support such, in others you can implement them on
+        your own with mutex and  condition variables.
+
+        Note!!! Consumer productivity > Producer productivity
+
+Pipeline - the process when many threads execute different tasks on the shared data (on different parts of it)
+They do the tasks in parallel. (Every Consumer productivity much be higher than Producer productivity)
+
+_______________________________________________________________________________________________________________________
+Semaphore
+(used to track limited resources)
+
+Semaphore - synchronization mechanism that is very similar to MUTEX but can be used by many threads at the same time
+    - synchronization mechanism
+    - includes a counter to track availability
+    - can be used by multiple threads(not like mutex)
+
+    Semaphore release() method call other threads to acquire the semaphore.
+
+    If the counter is positive - any thread can acquire a semaphore which decrements the counter -1
+    If the counter is zero - thread is placed in the queue to wait
+    When thread did it's work - it releases the semaphore and increment the counter +1
+    (threads that were waiting for the semaphore will be signaled to wake up)
+
+
+    Practical example from life:
+        We have a switch for 5 inputs (So we can charge 5 devices at the same time)
+            5 inputs is pur max_counter
+        As people will be coming and putting their phone to charge - the number will decrease for one point
+        (max_counter -= 1) every time. As soon as there will be no more places 6th guy will be waiting to obtain
+        semaphore and will acquire it when first device (anyone) will be released.
+
+    In computer terms or switch is the amount of resources we have:
+        - pool of connections (DB connection etc)
+        - items in a queue
+
+    Example of running:
+      Result:
+        Phone-0 is charging...
+        Phone-1 is charging...
+        Phone-2 is charging...
+        Phone-3 is charging...
+        Phone-1 is DONE charging!
+        Phone-4 is charging...
+        Phone-0 is DONE charging!
+        Phone-5 is charging...
+        Phone-2 is DONE charging!
+        Phone-6 is charging...
+        Phone-3 is DONE charging!
+        Phone-7 is charging...
+        Phone-4 is DONE charging!
+        Phone-8 is charging...
+        Phone-5 is DONE charging!
+        Phone-9 is charging...
+        Phone-6 is DONE charging!
+        Phone-8 is DONE charging!
+        Phone-7 is DONE charging!
+        Phone-9 is DONE charging!
+
+        real    0m3,709s
+        user    0m0,033s
+        sys     0m0,000s
+
+Binary Semaphore - general semaphore with only two states (1 or 0) the counter can only be 1 and 1 thread can acquire it
+
+Used similar as Mutex but:
+ Mutex
+  - can only be acquired/released by the same thread
+ Semaphore
+  - can be acquired/released by different threads
+
+Any thread can increment/ decrement the counter and release semaphore
+
+
+
+
+
+
+
+

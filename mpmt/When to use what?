@@ -1,0 +1,16 @@
+Artem Zapporozchnko version:
+
+Threads: api calls, I/O actions, working with files etc
+
+We should use threading when operations are (reasonable):
+1)Some kind of user input or actions where you have to wait for a long time for response:
+- takes lots of time
+- they are not linked between each other
+2)Some parallel actions:(multiprocessing is better!)
+- when lots of actions lasts for more than 1ms (otherwise it will take to long to change the task)
+
+NOTE: Number of threads less than number of cores!!! Otherwise it is more resource consuming.
+
+
+One thread better when:
+1) We have linked calculations better use one thread or multiprocessing.
